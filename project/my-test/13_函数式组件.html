@@ -94,6 +94,7 @@
       }
 
       Vue.component("title-custom", {
+        // 必须声明 functional 为 true
         functional: true,
         props: {
           level: {
@@ -109,6 +110,7 @@
             type: String,
           },
         },
+        // 因为是函数式组件，所以丢失了上下文this，只能使用context 获取数据
         render(h, context) {
           console.log(context);
           let children = [];
