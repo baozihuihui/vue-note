@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vue源码剖析</title>
+    <script src="vue.js"></script>
+</head>
+
+<body>
+    <div id="demo">
+        <h1>声明周期</h1>
+        <p>{{foo}}</p>
+    </div>
+    <script>
+        // 创建实例
+        const app = new Vue({
+            el: '#demo',
+            data:{
+                foo: 'foo'
+            },
+            beforeCreate(){console.log('beforeCreate')},
+            created(){console.log('created '+this.$el)},
+            beforeMount(){console.log('beforeMount')},
+            mounted(){
+                setTimeout(() => {
+                    this.foo = 'foooooo'
+                }, 2000);
+                console.log('mounted '+this.$el)},
+            beforeUpdate(){console.log('beforeUpdate')},
+            updated(){console.log('updated')},
+        });
+    </script>
+</body>
+</html>

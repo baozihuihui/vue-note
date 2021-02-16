@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>模板语法</title>
+    <style>
+      .active {
+        background-color: #ccd;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <!-- v-bind 绑定 与 :title 是一致的，表示html属性绑定动态值 -->
+      <h2 v-bind:title="title">{{title}}</h2>
+      <h2 :title="title">{{title}}</h2>
+      <!-- 插值文本 -->
+      <p>{{title}}</p>
+
+      <p>
+        <!-- 表单输入绑定  v-model-->
+        <!-- v-on 事件监听 -->
+        <input type="text" v-model="course" v-on:keydown.enter="addCourse" />
+      </p>
+
+      <!-- 条件判断 v-if/v-else 需要注意 不要和 v-for 平级，会有优先级问题  -->
+
+      <div v-if="courses.length===0">暂无数据</div>
+      <div id="courseList" v-else>
+        <!-- v-for -->
+        <!--  class 绑定  -->
+        <!--  style 绑定 属性不使用驼峰时，需要使用单引号进行说明 -->
+        <div
+          v-for="item in courses"
+          :key="item"
+          :class="{active:selectecdCourse === item}"
+          :style="{backgroundColor : selectecdCourse === item ? '#ccc' : 'transparent' }"
+          :style="{'background-color' : selectecdCourse === item ? '#ccc' : 'transparent' }"
+          @click="clickCouse(item)"
+        >
+          {{ item }}
+        </div>
+      </div>
+      <!-- 模板语法属性 -->
+      <p>课程共 {{ courses.length }}门</p>
+      <!-- 计算属性 -->
+      <p>课程共 {{ total }}</p>
+      <!-- 监听器 watch,挂载时不执行，只监听后续变化,需要加入option可以初次监听 -->
+      <p>课程共 {{ totalCount }}</p>
+    </div>
+    <script src="./vue.js"></script>
+    <script>
+      function getCourses() {
+        return new Promise((res) => {
+          setTimeout(() => {
+            res(["web 全栈", "vue JS"]);
+          }, 2000);
+        });
+      }
+
+      var app = new Vue({
+        el: "#app",
+        // created 组件实例化后执行，但是未挂载dom，所以无法操作dom相关内容
+        async created() {
+          const courses = await getCourses();
+          this.courses = courses;
+        },
+        // mounted 组件挂载后执行，可直接操作dom相关信息，这是组件已展示
+        // mounted () {
+        // },
+
+        // 建议使用函数式data,因为组件可能是多实例，则最好使用函数每次返回不用的data对象，防止冲突
+        data() {
+          return {
+            title: "模板语法",
+            course: "",
+            courses: [],
+            selectecdCourse: "",
+            totalCount: 0,
+          };
+        },
+        //  计算属性 具有缓存性，数据不发生变化不重复执行
+        computed: {
+          total() {
+            return this.courses.length + "门";
+          },
+        },
+        methods: {
+          clickCouse(item) {
+            this.selectecdCourse = item;
+          },
+          addCourse() {
+            this.courses.push(this.course);
+            this.course = "";
+          },
+        },
+        watch: {
+          courses: {
+            immediate: true, // 挂载时执行
+            deep: true, // 是否比对深度
+            handler(newValue, oldValue) {
+              this.totalCount = this.courses.length + "门";
+            },
+          },
+        },
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>14_混入mixin</title>
+    <style>
+      .active {
+        background-color: #ccd;
+      }
+      .message-box {
+        padding: 10px 20px;
+      }
+
+      .success {
+        background: #4fc08d;
+        border: 1px solid #42b983;
+      }
+
+      .warning {
+        background: #f66;
+        border: 1px solid #d63200;
+      }
+
+      .message-box-close {
+        float: right;
+      }
+
+      .test-enter-active,
+      .test-leave-active {
+        transition: opacity 0.5s;
+      }
+      .test-enter,
+      .test-leave-to {
+        opacity: 0;
+      }
+
+      .icon {
+        width: 1em;
+        height: 1em;
+        vertical-align: -0.15em;
+        fill: currentColor;
+        overflow: hidden;
+      }
+    </style>
+    <script src="https://at.alicdn.com/t/font_1281272_fepjp89tyz9.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <!-- 成功 通知栏 -->
+      <message ref="successMessage" class="success">
+        <template v-slot:title>
+          <strong>恭喜</strong>
+        </template>
+        <template>添加成功！</template>
+      </message>
+      <!-- 失败 通知栏 -->
+      <message ref="warningMessage" class="warning">
+        <template v-slot:title>
+          <strong>警告</strong>
+        </template>
+        <template>添加失败！</template>
+      </message>
+
+      <title-custom level="2" :title="title" icon="gouwuche"
+        >{{title}}</title-custom
+      >
+      <!-- 新增课程 -->
+      <course-add v-model="course" @add-course="addCourse"></course-add>
+      <p>
+        批量修改价格:<input type="text" v-model.number="price" />
+        <button @click="batchUpdatePrice">修改</button>
+      </p>
+      <p>
+        <button @click="messageClose">批量关闭消息</button>
+      </p>
+      <!-- 列表组件 -->
+      <course-list :courses="courses"></course-list>
+      <!-- 计算属性 -->
+      <p>课程共 {{ total }}</p>
+
+      <div id="hook-arguments-example" v-custom-directive:foo.a.b="title"></div>
+    </div>
+    <script src="./vue.js"></script>
+    <script>
+      Vue.prototype.$bus = new Vue();
+
+      function getCourses() {
+        return new Promise((res) => {
+          setTimeout(() => {
+            res([{ name: "web 全栈" }, { name: "vue JS" }]);
+          }, 2000);
+        });
+      }
+
+      Vue.component("title-custom", {
+        functional: true,
+        props: {
+          level: {
+            type: String,
+            default: 1,
+            required: true,
+          },
+          title: {
+            type: String,
+            default: "",
+          },
+          icon: {
+            type: String,
+          },
+        },
+        render(h, context) {
+          let children = [];
+          const { level, title, icon } = context.props;
+          // 处理 icon
+          if (icon) {
+            // <svg class="icon"><use xlink:href="#icon-cart"/></svg>
+            children.push(
+              h("svg", { class: "icon" }, [
+                h("use", {
+                  attrs: { "xlink:href": "#icon-" + icon },
+                }),
+              ])
+            );
+          }
+          children.push(context.children);
+          return h(
+            "h" + level, // 标签名称
+            { attrs: { title: title } }, // 描述参数 id/class/style/html attrs/on/指令/key...
+            children // 子节点数组
+          );
+        },
+      });
+
+      // 全局指令
+      Vue.directive("custom-directive", {
+        bind: function (el, binding, vnode) {
+          var s = JSON.stringify;
+          el.innerHTML =
+            "自定义指令解析: <br>" +
+            "name: " +
+            s(binding.name) +
+            "<br>" +
+            "value: " +
+            s(binding.value) +
+            "<br>" +
+            "expression: " +
+            s(binding.expression) +
+            "<br>" +
+            "argument: " +
+            s(binding.arg) +
+            "<br>" +
+            "modifiers: " +
+            s(binding.modifiers) +
+            "<br>" +
+            "vnode keys: " +
+            Object.keys(vnode).join(", ");
+        },
+      });
+
+      Vue.component("message", {
+        data() {
+          return {
+            show: false,
+          };
+        },
+        mounted() {
+          this.$bus.$on("message-close", () => {
+            if (this.show) {
+              this.toggle();
+            }
+          });
+        },
+        template: `
+                <transition name="test">
+                  <div class="message-box" v-if="show" >
+                      <slot name="title"></slot>
+                      <slot></slot>
+                      <span class="message-box-close" @click="toggle" > X </span>
+                  </div>
+                </transition>
+              `,
+        methods: {
+          toggle() {
+            this.show = !this.show;
+          },
+        },
+      });
+
+      Vue.component("course-add", {
+        props: {
+          value: {
+            type: String,
+            default: "",
+          },
+        },
+        methods: {
+          addCourse() {
+            this.$emit("add-course", this.course);
+            this.course = "";
+          },
+          onInput(e) {
+            this.$emit("input", e.target.value);
+          },
+        },
+        template: `
+                    <p>
+                      <input type="text"
+                        :value="value"
+                        @input="onInput"
+                        v-on:keydown.enter="addCourse"
+                        v-focus
+                     />
+                      <button @click="addCourse">新增</button>
+                    </p>`,
+        // 局部指令
+        directives: {
+          focus: {
+            inserted: function (el, bindings, vnode, oldvnode) {
+              el.focus();
+            },
+          },
+        },
+      });
+
+      Vue.component("course-list", {
+        data() {
+          return {
+            selectecdCourse: "",
+          };
+        },
+        methods: {
+          clickCouse(item) {
+            this.selectecdCourse = item;
+          },
+        },
+        props: {
+          courses: {
+            type: Array,
+            default: [],
+          },
+        },
+        template: `
+                    <div v-if="courses.length===0">暂无数据</div>
+                    <div id="courseList" v-else>
+                        <div
+                            v-for="item in courses"
+                            :key="item.name"
+                            :class="{active:selectecdCourse === item.name}"
+                            @click="clickCouse(item.name)"
+                        >
+                        {{ item.name }} - {{item.price | currency('¥') }}
+                        </div>
+                    </div>`,
+        filters: {
+          currency: function (value = 0, currency = "$") {
+            return currency + "  " + value;
+          },
+        },
+      });
+
+      var mixin = {
+        data() {
+          return {
+            // 数据冲突，会已组件数据为准
+            course: "for mixin",
+          };
+        },
+        created() {
+          // 可直接通过 this 访问实例
+          document.title = this.title + "change by mixin";
+        },
+        // 重复的钩子函数，会形成数组，优先执行 mixin 中的钩子
+        mounted() {
+          console.log("mixin mounted");
+        },
+        methods: {
+          // 数据冲突，会已组件数据为准
+          messageClose() {
+            throw new Error("need a method messageClose");
+          },
+        },
+      };
+
+      var app = new Vue({
+        mixins: [mixin],
+        el: "#app",
+        async created() {
+          const courses = await getCourses();
+          if (this.courses.length === 0) {
+            this.courses = courses;
+          } else {
+            this.courses.push(...courses);
+          }
+        },
+        mounted() {
+          console.log("app mounted");
+        },
+        data() {
+          return {
+            title: "14_混入mixin",
+            courses: [],
+            course: "",
+            price: 0,
+            isShow: false,
+            isWarningShow: false,
+          };
+        },
+        computed: {
+          total() {
+            return this.courses.length + "门";
+          },
+        },
+        methods: {
+          messageClose() {
+            this.$bus.$emit("message-close");
+          },
+          batchUpdatePrice() {
+            this.courses.forEach((course) => {
+              this.$set(course, "price", this.price);
+            });
+          },
+          addCourse() {
+            if (this.course) {
+              this.courses.push({ name: this.course });
+              this.course = "";
+              this.$refs.successMessage.toggle();
+            } else {
+              this.$refs.warningMessage.toggle();
+            }
+          },
+        },
+      });
+    </script>
+  </body>
+</html>

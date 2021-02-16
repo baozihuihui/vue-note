@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>插值文本</title>
+  </head>
+  <body>
+    <!-- 宿主文件 -->
+    <div id="app">
+      <h2>
+        <!-- 插值文本 -->
+        {{title}}
+      </h2>
+    </div>
+    <script src="./vue.js"></script>
+    <script>
+      var app = new Vue({
+        el: "#app",
+        data() {
+          return {
+            title: "hello, vue!",
+          };
+        },
+      });
+      setTimeout(() => {
+        app.title = "mua~, vue!";
+      }, 1000);
+    </script>
+  </body>
+</html>

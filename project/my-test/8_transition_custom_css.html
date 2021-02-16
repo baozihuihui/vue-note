@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>8_transition_custom_css</title>
+    <style>
+      .active {
+        background-color: #ccd;
+      }
+      .message-box {
+        padding: 10px 20px;
+      }
+
+      .success {
+        background: #4fc08d;
+        border: 1px solid #42b983;
+      }
+
+      .warning {
+        background: #f66;
+        border: 1px solid #d63200;
+      }
+
+      .message-box-close {
+        float: right;
+      }
+    </style>
+    <!-- 引入CSS动画库 -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/animate.css@3.5.1"
+      rel="stylesheet"
+      type="text/css"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <!-- 成功 通知栏 -->
+      <message ref="successMessage" class="success">
+        <template v-slot:title>
+          <strong>恭喜</strong>
+        </template>
+        <template>添加成功！</template>
+      </message>
+      <!-- 失败 通知栏 -->
+      <message ref="warningMessage" class="warning">
+        <template v-slot:title>
+          <strong>警告</strong>
+        </template>
+        <template>添加失败！</template>
+      </message>
+
+      <h2 :title="title">{{title}}</h2>
+      <!-- 新增课程 -->
+      <course-add v-model="course" @add-course="addCourse"></course-add>
+      <p>
+        批量修改价格:<input type="text" v-model.number="price" />
+        <button @click="batchUpdatePrice">修改</button>
+      </p>
+      <p>
+        <button @click="messageClose">批量关闭消息</button>
+      </p>
+      <!-- 列表组件 -->
+      <course-list :courses="courses"></course-list>
+      <!-- 计算属性 -->
+      <p>课程共 {{ total }}</p>
+    </div>
+    <script src="./vue.js"></script>
+    <script>
+      Vue.prototype.$bus = new Vue();
+
+      function getCourses() {
+        return new Promise((res) => {
+          setTimeout(() => {
+            res([{ name: "web 全栈" }, { name: "vue JS" }]);
+          }, 2000);
+        });
+      }
+
+      Vue.component("message", {
+        data() {
+          return {
+            show: false,
+          };
+        },
+        mounted() {
+          this.$bus.$on("message-close", () => {
+            if (this.show) {
+              this.toggle();
+            }
+          });
+        },
+        /**
+         *  <transation /> 属性配置 过度状态 自定义css样式类名
+         *  enter-class
+         *  enter-active-class
+         *  enter-to-class
+         *  leave-class
+         *  leave-active-class
+         *  leave-to-class
+         */
+        template: `
+        <transition 
+          enter-active-class="animated bounceIn"
+          leave-active-class="animated bounceOut"
+        >
+            <div class="message-box" v-if="show" >
+                <slot name="title"></slot>
+                <slot></slot>
+                <span class="message-box-close" @click="toggle" > X </span>
+            </div>
+          </transition>
+          `,
+        methods: {
+          toggle() {
+            this.show = !this.show;
+          },
+        },
+      });
+
+      Vue.component("course-add", {
+        props: {
+          value: {
+            type: String,
+            default: "",
+          },
+        },
+        methods: {
+          addCourse() {
+            this.$emit("add-course", this.course);
+            this.course = "";
+          },
+          onInput(e) {
+            this.$emit("input", e.target.value);
+          },
+        },
+        template: `
+                <p>
+                  <input type="text"
+                    :value="value"
+                    @input="onInput"
+                    v-on:keydown.enter="addCourse" />
+                  <button @click="addCourse">新增</button>
+                </p>`,
+      });
+
+      Vue.component("course-list", {
+        data() {
+          return {
+            selectecdCourse: "",
+          };
+        },
+        methods: {
+          clickCouse(item) {
+            this.selectecdCourse = item;
+          },
+        },
+        props: {
+          courses: {
+            type: Array,
+            default: [],
+          },
+        },
+        template: `
+                <div v-if="courses.length===0">暂无数据</div>
+                <div id="courseList" v-else>
+                    <div
+                        v-for="item in courses"
+                        :key="item.name"
+                        :class="{active:selectecdCourse === item.name}"
+                        @click="clickCouse(item.name)"
+                    >
+                    {{ item.name }} - ¥ {{item.price}}
+                    </div>
+                </div>`,
+      });
+
+      var app = new Vue({
+        el: "#app",
+        async created() {
+          const courses = await getCourses();
+          if (this.courses.length === 0) {
+            this.courses = courses;
+          } else {
+            this.courses.push(...courses);
+          }
+        },
+        data() {
+          return {
+            title: "8_transition_custom_css",
+            courses: [],
+            course: "",
+            price: 0,
+            isShow: false,
+            isWarningShow: false,
+          };
+        },
+        computed: {
+          total() {
+            return this.courses.length + "门";
+          },
+        },
+        methods: {
+          messageClose() {
+            this.$bus.$emit("message-close");
+          },
+          batchUpdatePrice() {
+            this.courses.forEach((course) => {
+              this.$set(course, "price", this.price);
+            });
+          },
+          addCourse() {
+            if (this.course) {
+              this.courses.push({ name: this.course });
+              this.course = "";
+              this.$refs.successMessage.toggle();
+            } else {
+              this.$refs.warningMessage.toggle();
+            }
+          },
+        },
+      });
+    </script>
+  </body>
+</html>

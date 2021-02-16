@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>12_自定义指令</title>
+    <style>
+      .active {
+        background-color: #ccd;
+      }
+      .message-box {
+        padding: 10px 20px;
+      }
+
+      .success {
+        background: #4fc08d;
+        border: 1px solid #42b983;
+      }
+
+      .warning {
+        background: #f66;
+        border: 1px solid #d63200;
+      }
+
+      .message-box-close {
+        float: right;
+      }
+
+      .test-enter-active,
+      .test-leave-active {
+        transition: opacity 0.5s;
+      }
+      .test-enter,
+      .test-leave-to {
+        opacity: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <!-- 成功 通知栏 -->
+      <message ref="successMessage" class="success">
+        <template v-slot:title>
+          <strong>恭喜</strong>
+        </template>
+        <template>添加成功！</template>
+      </message>
+      <!-- 失败 通知栏 -->
+      <message ref="warningMessage" class="warning">
+        <template v-slot:title>
+          <strong>警告</strong>
+        </template>
+        <template>添加失败！</template>
+      </message>
+
+      <h2 :title="title">{{title}}</h2>
+      <!-- 新增课程 -->
+      <course-add v-model="course" @add-course="addCourse"></course-add>
+      <p>
+        批量修改价格:<input type="text" v-model.number="price" />
+        <button @click="batchUpdatePrice">修改</button>
+      </p>
+      <p>
+        <button @click="messageClose">批量关闭消息</button>
+      </p>
+      <!-- 列表组件 -->
+      <course-list :courses="courses"></course-list>
+      <!-- 计算属性 -->
+      <p>课程共 {{ total }}</p>
+
+      <div id="hook-arguments-example" v-custom-directive:foo.a.b="title"></div>
+    </div>
+    <script src="./vue.js"></script>
+    <script>
+      Vue.prototype.$bus = new Vue();
+
+      function getCourses() {
+        return new Promise((res) => {
+          setTimeout(() => {
+            res([{ name: "web 全栈" }, { name: "vue JS" }]);
+          }, 2000);
+        });
+      }
+
+      // 全局指令
+      Vue.directive("custom-directive", {
+        bind: function (el, binding, vnode) {
+          var s = JSON.stringify;
+          el.innerHTML =
+            "自定义指令解析: <br>" +
+            "name: " +
+            s(binding.name) +
+            "<br>" +
+            "value: " +
+            s(binding.value) +
+            "<br>" +
+            "expression: " +
+            s(binding.expression) +
+            "<br>" +
+            "argument: " +
+            s(binding.arg) +
+            "<br>" +
+            "modifiers: " +
+            s(binding.modifiers) +
+            "<br>" +
+            "vnode keys: " +
+            Object.keys(vnode).join(", ");
+        },
+      });
+
+      Vue.component("message", {
+        data() {
+          return {
+            show: false,
+          };
+        },
+        mounted() {
+          this.$bus.$on("message-close", () => {
+            if (this.show) {
+              this.toggle();
+            }
+          });
+        },
+        template: `
+                <transition name="test">
+                  <div class="message-box" v-if="show" >
+                      <slot name="title"></slot>
+                      <slot></slot>
+                      <span class="message-box-close" @click="toggle" > X </span>
+                  </div>
+                </transition>
+              `,
+        methods: {
+          toggle() {
+            this.show = !this.show;
+          },
+        },
+      });
+
+      Vue.component("course-add", {
+        props: {
+          value: {
+            type: String,
+            default: "",
+          },
+        },
+        methods: {
+          addCourse() {
+            this.$emit("add-course", this.course);
+            this.course = "";
+          },
+          onInput(e) {
+            this.$emit("input", e.target.value);
+          },
+        },
+        template: `
+                    <p>
+                      <input type="text"
+                        :value="value"
+                        @input="onInput"
+                        v-on:keydown.enter="addCourse"
+                        v-focus
+                     />
+                      <button @click="addCourse">新增</button>
+                    </p>`,
+        // 局部指令
+        directives: {
+          /**
+           * 自定义指令 钩子函数
+           * bind  只调用一次，指令第一次绑定时进行调用
+           * inserted 被绑定元素被插入父元素时调用(只能保证父元素一定存在，当前元素不一定存在)
+           * update 更新前调用
+           * componentUpdated 子结点更新完成后调用
+           * unbind  接触绑定时调用
+           **/
+
+          /**
+           * 自定义指令参数
+           * el 绑定元素，可直接操作的dom
+           * bindings 指令参数
+           *   name：指令名称 v-temp name="temp"
+           *   value：指令绑定的值(如果是表达式则是结果) v-temp="1+1" value = 2
+           *   oldValue：更新前绑定的值 仅在 update/componentUpdated 生效
+           *   expression：value 的字符串表达式 v-temp="1+1" expression = '1+1'
+           *   arg：指令的参数 v-temp:foo  arg="foo"
+           *   modifiers：指令修饰符 v-temp.a.b  modifiers={a=true,b=true}
+           * vnode    编译的结点
+           * oldvnode 更新前 vnode 结点，仅在 update/componentUpdated 生效
+           */
+          focus: {
+            inserted: function (el, bindings, vnode, oldvnode) {
+              el.focus();
+            },
+          },
+        },
+      });
+
+      Vue.component("course-list", {
+        data() {
+          return {
+            selectecdCourse: "",
+          };
+        },
+        methods: {
+          clickCouse(item) {
+            this.selectecdCourse = item;
+          },
+        },
+        props: {
+          courses: {
+            type: Array,
+            default: [],
+          },
+        },
+        template: `
+                    <div v-if="courses.length===0">暂无数据</div>
+                    <div id="courseList" v-else>
+                        <div
+                            v-for="item in courses"
+                            :key="item.name"
+                            :class="{active:selectecdCourse === item.name}"
+                            @click="clickCouse(item.name)"
+                        >
+                        {{ item.name }} - {{item.price | currency('¥') }}
+                        </div>
+                    </div>`,
+        filters: {
+          // 第一个参数是 需要过滤的值，后续过滤器传入的值从第二个开始
+          currency: function (value = 0, currency = "$") {
+            return currency + "  " + value;
+          },
+        },
+      });
+
+      var app = new Vue({
+        el: "#app",
+        async created() {
+          const courses = await getCourses();
+          if (this.courses.length === 0) {
+            this.courses = courses;
+          } else {
+            this.courses.push(...courses);
+          }
+        },
+        data() {
+          return {
+            title: "12_自定义指令",
+            courses: [],
+            course: "",
+            price: 0,
+            isShow: false,
+            isWarningShow: false,
+          };
+        },
+        computed: {
+          total() {
+            return this.courses.length + "门";
+          },
+        },
+        methods: {
+          messageClose() {
+            this.$bus.$emit("message-close");
+          },
+          batchUpdatePrice() {
+            this.courses.forEach((course) => {
+              this.$set(course, "price", this.price);
+            });
+          },
+          addCourse() {
+            if (this.course) {
+              this.courses.push({ name: this.course });
+              this.course = "";
+              this.$refs.successMessage.toggle();
+            } else {
+              this.$refs.warningMessage.toggle();
+            }
+          },
+        },
+      });
+    </script>
+  </body>
+</html>
